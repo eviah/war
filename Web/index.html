@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GLOBAL WARFARE — Tactical Simulator</title>
+<style>
+  :root { --accent:#e8b339; --accent2:#46d1ff; --blue:#3d8bff; --red:#ff4d4d; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; background:#05070a; color:#dfe6ee;
+    font-family:"Segoe UI",system-ui,sans-serif; cursor:default; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10;
+    text-shadow:0 2px 6px rgba(0,0,0,.85); user-select:none; }
+  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:26px; height:26px; }
+  #crosshair div { position:absolute; background:rgba(230,240,255,.85); box-shadow:0 0 4px #000; }
+  .ch-h { top:50%; height:2px; width:8px; transform:translateY(-50%); }
+  .ch-v { left:50%; width:2px; height:8px; transform:translateX(-50%); }
+  #ch-l{left:0} #ch-r{right:0} #ch-t{top:0} #ch-b{bottom:0}
+  #crosshair.hidden div{opacity:0}
+  #hitmarker { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(45deg);
+    width:22px; height:22px; opacity:0; }
+  #hitmarker div { position:absolute; background:#fff; box-shadow:0 0 6px #f55; width:8px;height:2px;top:50%;left:0;}
+
+  .label { font-size:11px; letter-spacing:3px; color:#8fa3b8; margin-bottom:5px; font-weight:600;}
+  #bottomleft { position:absolute; left:34px; bottom:30px; }
+  #health-wrap { width:230px; }
+  #health-bar { height:9px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); position:relative; }
+  #health-fill { position:absolute; inset:0; width:100%; background:linear-gradient(90deg,#3ddc84,#7CFFB2); transition:width .18s; }
+  #stamina-bar { height:4px; margin-top:4px; background:rgba(255,255,255,.06); position:relative; }
+  #stamina-fill { position:absolute; inset:0; width:100%; background:#cfae54; }
+
+  #bottomright { position:absolute; right:40px; bottom:26px; text-align:right; }
+  #ammo { font-variant-numeric:tabular-nums; }
+  #ammo .mag { font-size:54px; font-weight:700; line-height:1; color:#f1f5fa; }
+  #ammo .res { font-size:22px; font-weight:600; color:#8fa3b8; margin-left:6px; }
+  #weapon-name { font-size:12px; letter-spacing:3px; color:var(--accent); margin-bottom:4px; font-weight:700;}
+  #fire-mode { font-size:11px; letter-spacing:3px; color:#8fa3b8; margin-top:4px;}
+  #jam-warn { color:var(--red); font-weight:700; letter-spacing:2px; font-size:13px; margin-top:4px; opacity:0;}
+
+  #weapon-belt { position:absolute; right:40px; bottom:120px; text-align:right; font-size:11px; letter-spacing:1px; color:#6f8197;}
+  #weapon-belt .w { margin:3px 0; }
+  #weapon-belt .w.active { color:#fff; }
+  #weapon-belt .w b { color:var(--accent); }
+
+  #stance { position:absolute; left:34px; bottom:96px; font-size:11px; letter-spacing:3px; color:#8fa3b8; }
+  #stance b{color:var(--accent2)}
+  #order-status { position:absolute; left:34px; bottom:120px; font-size:11px; letter-spacing:3px; color:#8fa3b8;}
+  #order-status b{ color:var(--blue);}
+
+  #topleft { position:absolute; left:34px; top:26px; }
+  #objective { font-size:12px; letter-spacing:2px; }
+  #objective .o-title{ color:var(--accent); font-weight:700; }
+  #objective .o-prog{ color:#cfdae6; font-size:18px; font-weight:700;}
+  #teamcount { font-size:11px; letter-spacing:2px; margin-top:8px; }
+  #teamcount .blue{ color:var(--blue);} #teamcount .red{ color:var(--red);}
+  #wind { font-size:11px; letter-spacing:2px; color:#8fa3b8; margin-top:6px;}
+
+  #topright{ position:absolute; right:40px; top:26px; text-align:right; font-size:11px; letter-spacing:2px; color:#6f8197;}
+  #compass{ font-size:18px; color:#cfdae6; font-weight:600; letter-spacing:4px;}
+  #score b{color:var(--accent)}
+
+  #prompt{ position:absolute; left:50%; top:62%; transform:translateX(-50%); font-size:14px;
+    letter-spacing:2px; color:#fff; background:rgba(8,14,22,.7); padding:8px 18px; border-radius:6px;
+    border:1px solid rgba(255,255,255,.15); opacity:0; transition:opacity .15s;}
+  #prompt kbd{ background:#1b2533; border:1px solid #2e3c4f; border-radius:4px; padding:1px 7px; color:var(--accent);}
+
+  #toast{ position:absolute; left:50%; top:18%; transform:translateX(-50%); font-size:13px;
+    letter-spacing:3px; color:var(--accent2); opacity:0; transition:opacity .3s; text-align:center;}
+
+  /* tank HUD */
+  #tankhud{ position:fixed; inset:0; pointer-events:none; z-index:11; display:none; }
+  #tankhud .reticle{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:120px; height:120px; border:1px solid rgba(120,255,160,.5); border-radius:50%; }
+  #tankhud .reticle:before,#tankhud .reticle:after{ content:''; position:absolute; background:rgba(120,255,160,.6);}
+  #tankhud .reticle:before{ left:50%; top:-14px; width:1px; height:148px; transform:translateX(-50%);}
+  #tankhud .reticle:after{ top:50%; left:-14px; height:1px; width:148px; transform:translateY(-50%);}
+  #tankhud .frame{ position:absolute; inset:30px; border:1px solid rgba(120,255,160,.12);}
+  #tank-info{ position:absolute; left:40px; bottom:40px; color:#8effb0; font-size:13px; letter-spacing:2px; font-family:monospace;}
+  #tank-info .big{ font-size:22px; font-weight:700; }
+
+  #vignette{ position:fixed; inset:0; pointer-events:none; z-index:9; box-shadow:inset 0 0 220px 40px rgba(0,0,0,.75); }
+  #damage-flash{ position:fixed; inset:0; pointer-events:none; z-index:12;
+    background:radial-gradient(circle at center, transparent 35%, rgba(170,0,0,.55) 100%); opacity:0; transition:opacity .12s; }
+
+  /* ---------- menus / briefing ---------- */
+  .screen{ position:fixed; inset:0; z-index:30; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    background:radial-gradient(circle at 50% 30%, rgba(20,28,40,.6), rgba(2,4,7,.97));
+    backdrop-filter:blur(3px); overflow-y:auto; padding:40px; }
+  .screen.hidden{ display:none; }
+  .title{ font-size:clamp(34px,6vw,72px); font-weight:800; letter-spacing:10px;
+    background:linear-gradient(180deg,#fff,#9fb4c9); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .subtitle{ font-size:12px; letter-spacing:8px; color:var(--accent); margin-top:6px; font-weight:600;}
+  .tagline{ color:#8295aa; margin-top:14px; max-width:600px; line-height:1.6; font-size:13px;}
+
+  /* briefing board */
+  #briefing .board{ margin-top:22px; width:min(900px,92vw); text-align:left; }
+  .grp{ margin-bottom:16px; }
+  .grp > .label{ margin-bottom:8px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ pointer-events:auto; cursor:pointer; padding:9px 16px; border:1px solid #2e3c4f;
+    border-radius:6px; background:rgba(20,28,40,.6); font-size:13px; letter-spacing:1px; color:#aeb9c6;
+    transition:all .12s; }
+  .chip:hover{ border-color:#4a6a90; color:#fff; }
+  .chip.sel{ background:linear-gradient(180deg,rgba(232,179,57,.22),rgba(232,179,57,.08));
+    border-color:var(--accent); color:#fff; box-shadow:0 0 16px rgba(232,179,57,.18); }
+  .chip small{ display:block; color:#6f8197; font-size:10px; letter-spacing:0; margin-top:2px;}
+  .chip.sel small{ color:#cdb878; }
+
+  .controls{ margin-top:6px; display:grid; grid-template-columns:auto auto auto auto; gap:6px 20px;
+    font-size:12px; color:#aeb9c6; max-width:760px; }
+  .controls .k{ color:#fff; font-weight:700; text-align:right; }
+  .controls .k kbd{ background:#1b2533; border:1px solid #2e3c4f; border-radius:5px; padding:1px 7px; font-family:inherit; }
+  .btn{ pointer-events:auto; margin-top:26px; cursor:pointer; padding:15px 60px; font-size:16px;
+    letter-spacing:5px; font-weight:700; color:#08111c; background:linear-gradient(180deg,var(--accent),#cf9a25);
+    border:none; border-radius:6px; box-shadow:0 8px 30px rgba(232,179,57,.3); transition:transform .12s, box-shadow .12s; }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 12px 36px rgba(232,179,57,.45); }
+  .hint{ margin-top:14px; font-size:11px; letter-spacing:3px; color:#5d6e82;}
+  #loading{ z-index:40; }
+  .spinner{ width:46px; height:46px; border:3px solid rgba(255,255,255,.12); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #boot-msg{ margin-top:20px; letter-spacing:3px; color:#7e90a4; font-size:12px; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="crosshair">
+    <div class="ch-h" id="ch-l"></div><div class="ch-h" id="ch-r"></div>
+    <div class="ch-v" id="ch-t"></div><div class="ch-v" id="ch-b"></div>
+  </div>
+  <div id="hitmarker"><div></div></div>
+  <div id="topleft">
+    <div id="objective">
+      <div class="o-title" id="obj-title">OBJECTIVE</div>
+      <div class="o-prog" id="obj-prog">—</div>
+    </div>
+    <div id="teamcount">FRIENDLY <span class="blue" id="cnt-blue">0</span> &nbsp;·&nbsp; HOSTILE <span class="red" id="cnt-red">0</span></div>
+    <div id="wind">WIND <span id="wind-val">— —</span></div>
+  </div>
+  <div id="topright">
+    <div id="compass">N</div>
+    <div id="score" style="margin-top:6px">SCORE <b id="score-val">0</b></div>
+    <div style="margin-top:4px">GLOBAL WARFARE · v0.6</div>
+  </div>
+  <canvas id="minimap" width="176" height="176" style="position:absolute;right:28px;top:96px;border:1px solid rgba(120,160,200,.35);border-radius:12px;background:rgba(8,14,22,.5);"></canvas>
+  <div id="order-status">SQUAD ORDER <b id="order-val">HOLD</b></div>
+  <div id="stance">STANCE <b id="stance-val">PATROL</b></div>
+  <div id="bottomleft">
+    <div id="health-wrap">
+      <div class="label">VITALS</div>
+      <div id="health-bar"><div id="health-fill"></div></div>
+      <div id="stamina-bar"><div id="stamina-fill"></div></div>
+    </div>
+  </div>
+  <div id="weapon-belt"></div>
+  <div id="bottomright">
+    <div id="weapon-name">—</div>
+    <div id="ammo"><span class="mag" id="ammo-mag">0</span><span class="res" id="ammo-res">/ 0</span></div>
+    <div id="fire-mode">MODE: <span id="mode-val">AUTO</span></div>
+    <div id="jam-warn">⚠ MALFUNCTION — PRESS R</div>
+  </div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- Tank HUD -->
+<div id="tankhud">
+  <div class="frame"></div>
+  <div class="reticle"></div>
+  <div id="tank-info">
+    <div>M-1 ABRAMS-CLASS MBT</div>
+    <div class="big">RND <span id="tank-ammo">12</span></div>
+    <div id="tank-reload">READY</div>
+    <div>SPD <span id="tank-spd">0</span> KPH · F TO DISMOUNT</div>
+  </div>
+</div>
+
+<!-- Jet HUD -->
+<div id="planehud" style="position:fixed;inset:0;pointer-events:none;z-index:11;display:none;font-family:monospace;color:#8effb0;">
+  <div style="position:absolute;inset:40px;border:1px solid rgba(120,255,160,.12)"></div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:60px;height:60px;">
+    <div style="position:absolute;left:50%;top:0;width:1px;height:60px;background:rgba(120,255,160,.5);transform:translateX(-50%)"></div>
+    <div style="position:absolute;top:50%;left:0;height:1px;width:60px;background:rgba(120,255,160,.5);transform:translateY(-50%)"></div>
+  </div>
+  <div style="position:absolute;left:60px;top:50%;transform:translateY(-50%);font-size:13px;letter-spacing:2px;">
+    <div>SPD</div><div style="font-size:24px;font-weight:700"><span id="jet-spd">0</span></div><div>KPH</div>
+  </div>
+  <div style="position:absolute;right:60px;top:50%;transform:translateY(-50%);text-align:right;font-size:13px;letter-spacing:2px;">
+    <div>ALT</div><div style="font-size:24px;font-weight:700"><span id="jet-alt">0 m</span></div>
+  </div>
+  <div style="position:absolute;left:40px;bottom:46px;font-size:13px;letter-spacing:2px;">
+    <div>F-16 FIGHTING FALCON</div>
+    <div>THROTTLE <span id="jet-thr">0%</span> · W/S · L-CLICK GUN</div>
+    <div>MOUSE PITCH · A/D ROLL · F EJECT</div>
+  </div>
+</div>
+
+<div id="vignette"></div>
+<div id="damage-flash"></div>
+
+<!-- Briefing / planning board -->
+<div id="briefing" class="screen hidden">
+  <div class="title">GLOBAL WARFARE</div>
+  <div class="subtitle">MISSION PLANNING — YOU ARE THE OPERATION COMMANDER</div>
+  <div class="board">
+    <div class="grp">
+      <div class="label">THEATER / MAP</div>
+      <div class="chips" id="g-map"></div>
+    </div>
+    <div class="grp">
+      <div class="label">SELECT FACTION (your team color, equipment & doctrine)</div>
+      <div class="chips" id="g-faction"></div>
+    </div>
+    <div class="grp">
+      <div class="label">TARGET NATION (invasion objective)</div>
+      <div class="chips" id="g-target"></div>
+    </div>
+    <div class="grp">
+      <div class="label">MISSION ARCHETYPE</div>
+      <div class="chips" id="g-mission"></div>
+    </div>
+    <div style="display:flex; gap:30px; flex-wrap:wrap;">
+      <div class="grp" style="flex:1; min-width:240px">
+        <div class="label">TIME OF DAY</div>
+        <div class="chips" id="g-time"></div>
+      </div>
+      <div class="grp" style="flex:1; min-width:240px">
+        <div class="label">WEATHER</div>
+        <div class="chips" id="g-weather"></div>
+      </div>
+    </div>
+    <div class="grp">
+      <div class="label">PRIMARY WEAPON (loadout — affects mass & inertia)</div>
+      <div class="chips" id="g-weapon"></div>
+    </div>
+    <div class="grp">
+      <div class="label">SQUAD SIZE (men under your command)</div>
+      <div class="chips" id="g-squad"></div>
+    </div>
+  </div>
+  <button class="btn" id="deploy-btn">PLAN OPERATION &#9654;</button>
+  <div class="hint">NEXT: DRAW YOUR ASSAULT ROUTE</div>
+</div>
+
+<!-- Planning / route-drawing board -->
+<div id="planning" class="screen hidden">
+  <div class="title" style="font-size:40px">OPERATION PLANNING</div>
+  <div class="subtitle" id="plan-phase">PHASE 1 — DRAW YOUR ADVANCE</div>
+  <div class="tagline" id="plan-hint">Click-drag a route from your insertion point (green) to the enemy capital HQ (red flag).
+    Your squad pushes along this line through escalating contact — small skirmishes building to the final assault where you plant your flag.</div>
+  <canvas id="planmap" width="640" height="640"
+    style="margin-top:14px;border:1px solid #2e3c4f;border-radius:8px;background:#0a0f16;pointer-events:auto;cursor:crosshair;width:min(64vh,640px);height:min(64vh,640px);"></canvas>
+  <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
+    <button class="chip" id="plan-clear" style="pointer-events:auto">CLEAR</button>
+    <button class="chip" id="plan-next" style="pointer-events:auto">CONFIRM ROUTE &#9654;</button>
+    <button class="btn" id="plan-commit" style="margin-top:0;display:none;padding:13px 40px">COMMIT &amp; DEPLOY</button>
+  </div>
+</div>
+
+<!-- Cinematic transition -->
+<div id="cinematic" style="position:fixed;inset:0;z-index:35;display:none;">
+  <div style="position:absolute;top:0;left:0;right:0;height:12vh;background:#000;"></div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:12vh;background:#000;"></div>
+  <div id="cine-text" style="position:absolute;bottom:15vh;left:0;right:0;text-align:center;color:#dfe6ee;font-size:clamp(16px,2.4vw,26px);letter-spacing:5px;font-weight:700;text-shadow:0 3px 12px #000;opacity:0;transition:opacity .6s;"></div>
+  <div style="position:absolute;bottom:15vh;right:30px;color:#7e90a4;font-size:11px;letter-spacing:2px;">CLICK TO SKIP &#9654;</div>
+</div>
+
+<!-- Nation select -->
+<div id="nationselect" class="screen hidden">
+  <div class="title">GLOBAL WARFARE</div>
+  <div class="subtitle">CHOOSE YOUR NATION — THEN CONQUER THE WORLD</div>
+  <div class="tagline">Pick a flag to lead. Invade rival nations one by one, fund your war machine, upgrade your army — and take the whole world. Rival nations will fight back.</div>
+  <div id="nation-grid" style="margin-top:24px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:920px;"></div>
+</div>
+
+<!-- World conquest map -->
+<div id="worldmap" class="screen hidden">
+  <div class="title" style="font-size:42px">WORLD CONQUEST</div>
+  <div class="subtitle" id="world-sub">SELECT A NATION TO INVADE</div>
+  <div id="world-status" class="tagline" style="min-height:20px;color:#ff8a6a"></div>
+  <div style="margin:8px 0 4px;letter-spacing:2px;color:#e8b339;font-weight:700">TREASURY $<span id="treasury">0</span> &nbsp;·&nbsp; TURN <span id="turn">1</span> &nbsp;·&nbsp; TERRITORY <span id="terr">1</span>/<span id="terrtot">12</span></div>
+  <div id="world-grid" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:1000px;"></div>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <button class="btn" id="upgrades-btn" style="padding:12px 36px">ARMY UPGRADES</button>
+    <button class="chip" id="settings-btn" style="pointer-events:auto;margin-top:26px">SETTINGS</button>
+    <button class="chip" id="newcampaign-btn" style="pointer-events:auto;margin-top:26px">NEW CAMPAIGN</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings" class="screen hidden">
+  <div class="title" style="font-size:40px">SETTINGS</div>
+  <div class="subtitle">CAMPAIGN OPTIONS</div>
+  <div style="margin-top:28px;display:flex;flex-direction:column;gap:14px;align-items:center;">
+    <button class="btn" id="set-change-country" style="padding:13px 44px">CHANGE COUNTRY</button>
+    <button class="chip" id="set-newcampaign" style="pointer-events:auto">NEW CAMPAIGN (wipe progress)</button>
+    <button class="chip" id="set-back" style="pointer-events:auto">BACK</button>
+  </div>
+</div>
+
+<!-- Upgrades -->
+<div id="upgrades" class="screen hidden">
+  <div class="title" style="font-size:40px">ARMY UPGRADES</div>
+  <div class="subtitle">TREASURY $<span id="up-treasury">0</span></div>
+  <div id="upgrade-list" style="margin-top:24px;width:min(660px,92vw);text-align:left;"></div>
+  <button class="btn" id="upgrades-back" style="padding:12px 40px">BACK TO MAP</button>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="screen hidden">
+  <div class="title" style="font-size:48px">PAUSED</div>
+  <div class="hint" style="margin-top:30px">CLICK TO RESUME</div>
+</div>
+
+<!-- End screen -->
+<div id="endscreen" class="screen hidden">
+  <div class="title" id="end-title">MISSION COMPLETE</div>
+  <div class="subtitle" id="end-sub">—</div>
+  <div class="tagline" id="end-tag">—</div>
+  <button class="btn" id="restart-btn">NEW OPERATION</button>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="screen">
+  <div class="spinner"></div>
+  <div id="boot-msg">LOADING ENGINE…</div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>

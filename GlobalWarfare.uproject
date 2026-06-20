@@ -1,0 +1,22 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.4",
+	"Category": "",
+	"Description": "Global Warfare - tactical FP vertical slice",
+	"Modules": [
+		{
+			"Name": "GlobalWarfare",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	],
+	"Plugins": [
+		{ "Name": "EnhancedInput", "Enabled": true },
+		{ "Name": "ChaosVehiclesPlugin", "Enabled": true },
+		{ "Name": "GameplayAbilities", "Enabled": true },
+		{ "Name": "ChaosCloth", "Enabled": true }
+	]
+}

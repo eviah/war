@@ -1,0 +1,12 @@
+{
+  "name": "global-warfare",
+  "version": "0.8.0",
+  "description": "Global Warfare — desktop build",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.7.0"
+  }
+}
